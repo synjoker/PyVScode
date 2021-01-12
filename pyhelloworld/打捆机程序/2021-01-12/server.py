@@ -224,6 +224,7 @@ def OutputConnectionList():
     CONNECTION_LIST = [] # LIST:IP地址
     CONNECTION_DT = {} # Dictioary：Socket对象
     CONNECTION_ID = [] # LIST:ID号
+    pass
 
 if __name__ == "__main__":
     main()
