@@ -13,6 +13,7 @@ import calendar # 日历
 import struct # 封包解包
 import sys # 系统库
 import socket # socket通信
+import os # 管理文件路径
 # import serial # 串口通信
 
 """
@@ -28,8 +29,9 @@ PORT = 18888
 IP_PORT = (IP_SERVER, PORT)
 MAX_IP_LINK = 30 # 最大并发连接数30
 LABELLENGTH = struct.calcsize('32si') # 用于类型判断的标志长度
-CONNECTION_LIST = [] # LIST：IP地址
+CONNECTION_LIST = [] # LIST:IP地址
 CONNECTION_DT = {} # Dictioary：Socket对象
+CONNECTION_ID = [] # LIST:ID号
 
 # 主函数
 def main():
@@ -80,18 +82,42 @@ def SocketLinkSet():
     
     return _sock
 
+
+def CreateSavePath(clientid):
+    FD = './'+str(clientid)
+    # 1. 可以得到当前日期
+    _localtime = time.strftime("%Y-%m-%d", time.localtime())
+    # print(_localtime)
+    # print(time.localtime().tm_mday)
+    # _localtime = '2021-01-13'
+    # print(_localtime)
+    # 2. 获取当前路径
+    # 3. 按照设备id创建路径
+    if not os.path.exists(FD):
+        os.mkdir(FD)
+    # 4. 更改当前路径
+    # 5. 监督日期变化，创造日期文件夹
+    # os.chdir('./'+clientid)
+    # print(os.getcwd())
+    FD_TIME = FD + '/' +str(_localtime)
+    if not os.path.exists(FD_TIME):
+        os.mkdir(FD_TIME)
+    # print(FD_TIME)
+
+    return FD_TIME
+
 # 负责一次socket连接的具体工作
-def SocketLinkConnection(clientsock, clientaddress):
+def SocketLinkConnection(clientsock, clientaddress, clientid):
     while True:
         try:
             recvdata = clientsock.recv(BUFSIZE)
             # time.sleep(0.5)
             if len(recvdata) > LABELLENGTH:
                 # 执行GPS接收
-                ServerGps(recvdata)
+                ServerGps(recvdata, clientid)
             elif len(recvdata) == LABELLENGTH:
                 # 执行图像接收
-                ServerPic(clientsock, recvdata)
+                ServerPic(clientsock, recvdata, clientid)
             elif not recvdata:
                 raise ConnectionError
                 # else:
@@ -100,7 +126,7 @@ def SocketLinkConnection(clientsock, clientaddress):
 
         except ConnectionError:
             clientsock.close()
-            print("< {0} > Offline-DisConnection from:{1}···".format(GetLocalTime(), clientaddress))
+            print("< {0} > Offline-DisConnection from:{1}···".format(GetLocalTime(), clientid))
             _index = CONNECTION_LIST.index(clientaddress)
             CONNECTION_DT.pop(clientaddress)
             CONNECTION_LIST.pop(_index)
@@ -115,14 +141,18 @@ def SocketSelectClient():
         # 对于第一次连接的IP保存记录
         if clientaddress not in CONNECTION_LIST:
             CONNECTION_LIST.append(clientaddress)
+            CONNECTION_ID.append('JSTCDKJ'+str(len(CONNECTION_ID)+1))
             CONNECTION_DT[clientaddress] = clientsock
-            print("< {0} > New-Socket-Connection from:{1}···".format(GetLocalTime(), clientaddress))
+            # # 显示打捆机id
+            # CONNECTION_ID[CONNECTION_LIST.index(clientaddress)]
+            print("< {0} > New-Socket-Connection from:{1}···".format(GetLocalTime(), CONNECTION_ID[CONNECTION_LIST.index(clientaddress)]))
+        clientid = CONNECTION_ID[CONNECTION_LIST.index(clientaddress)]
         #在这里创建线程，就可以每次都将socket进行保持
-        SocketThreading = threading.Thread(target=SocketLinkConnection, args=(clientsock, clientaddress))
+        SocketThreading = threading.Thread(target=SocketLinkConnection, args=(clientsock, clientaddress,clientid))
         SocketThreading.start()
 
 # 负责图像的收发
-def ServerPic(clientsock, recvdata):
+def ServerPic(clientsock, recvdata, clientid):
     """ 
     输入：conn， addr——socket对象和地址
          filename， filesize——文件格式、文件大小
@@ -136,7 +166,8 @@ def ServerPic(clientsock, recvdata):
     try:
         recvd_size = 0  # 定义已接收文件的大小
         # 存储在该脚本所在目录下面
-        fp = open('./' + str(filename), 'wb')      
+        PathBaseDay = CreateSavePath(clientid)
+        fp = open(PathBaseDay + '/' + str(filename), 'wb')      
         # 将分批次传输的二进制流依次写入到文件
         print('0 filesize is {}'.format(filesize))
         while not recvd_size == filesize:
@@ -156,23 +187,29 @@ def ServerPic(clientsock, recvdata):
         print('图片输入错误')
 
 # 负责GPS的收发
-def ServerGps(recvdata):
+def ServerGps(recvdata, clientid):
     _recvdata = recvdata.decode() ### 2038：接收到图片数据
+    PathBaseDay = CreateSavePath(clientid)
+    
     try:
-        print('收到导航信息：', _recvdata)
+        FP = open(PathBaseDay + '/' + str(clientid)+'.txt', 'a')
+        # _recvdata = _recvdata + '\n'
+        FP.write(_recvdata)
+        # FP.close()
+        # print('收到导航信息：', _recvdata)
     except ConnectionResetError:
         print('导航信息输入错误')
 
 # 文件路径保存！！！！！！！！！！
-def SaveFilePath():# ——id负责定义文件名；——日期负责分天保存；——》》
-    basePath = 'D:\\Device_01\\'
-    thisDay = time.strftime("%Y-%m-%d", time.localtime())
-    dayPath = basePath + thisDay
-    if not os.path.exists(dayPath):
-        os.mkdir(dayPath)
-    else:
-        pass
-    return dayPath
+# def SaveFilePath(clientid):# ——id负责定义文件名；——日期负责分天保存；——》》
+#     basePath = 'D:/Device_'+clientid+'/'
+#     thisDay = time.strftime("%Y-%m-%d", time.localtime())
+#     dayPath = basePath + thisDay
+#     if not os.path.exists(dayPath):
+#         os.mkdir(dayPath)
+#     else:
+#         pass
+#     return dayPath
 
 # 日期更新判断
 def DiffDaysDicide():
@@ -181,6 +218,12 @@ def DiffDaysDicide():
 # 设备判断
 def DiffDevicesDicide():
     pass
+
+def OutputConnectionList():
+    # 全输入到一个txt
+    CONNECTION_LIST = [] # LIST:IP地址
+    CONNECTION_DT = {} # Dictioary：Socket对象
+    CONNECTION_ID = [] # LIST:ID号
 
 if __name__ == "__main__":
     main()
