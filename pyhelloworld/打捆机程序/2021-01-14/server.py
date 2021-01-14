@@ -29,6 +29,15 @@ PORT = 18888
 IP_PORT = (IP_LOCALTEST, PORT)
 MAX_IP_LINK = 30 # 最大并发连接数30
 LABELLENGTH = struct.calcsize('32si') # 用于类型判断的标志长度
+
+"""
+客户机记录（修改）
+改进：
+1. 新建一个txt文件专门保存这三个量
+2. 服务器接收连接时，首先进行认证，在txt文件里查找信息
+3. 如果有，则发送“device existence”
+   如果没有，则发送“no device”
+"""
 CONNECTION_LIST = [] # LIST:IP地址
 CONNECTION_DT = {} # Dictioary：Socket对象
 CONNECTION_ID = [] # LIST:ID号
@@ -133,11 +142,26 @@ def SocketLinkConnection(clientsock, clientaddress, clientid):
             # 调试时break 正常运行时去除
             break
 
+def IdAuthentication(signal):
+    signal = 0
+    if signal in CONNECTION_DT:
+        client_id = (signal + )
+    pass
+
+
 # 管理多socket通信，并分发线程
 def SocketSelectClient():
     _sock = SocketLinkSet()
     while True:
         clientsock, clientaddress = _sock.accept()
+
+        """
+        认证程序：
+        接收：接收客户端本地口令“device X”，至服务器txt文件查找对应名称
+        输出：（成功）接收服务器“device existence”
+            （失败）接收服务器“no device”
+        返回：client id
+        """
         # 对于第一次连接的IP保存记录
         if clientaddress not in CONNECTION_LIST:
             CONNECTION_LIST.append(clientaddress)
@@ -148,7 +172,7 @@ def SocketSelectClient():
             print("< {0} > New-Socket-Connection from:{1}···".format(GetLocalTime(), CONNECTION_ID[CONNECTION_LIST.index(clientaddress)]))
         clientid = CONNECTION_ID[CONNECTION_LIST.index(clientaddress)]
         #在这里创建线程，就可以每次都将socket进行保持
-        SocketThreading = threading.Thread(target=SocketLinkConnection, args=(clientsock, clientaddress,clientid))
+        SocketThreading = threading.Thread(target=SocketLinkConnection, args=(clientsock, clientaddress, clientid))
         SocketThreading.start()
 
 # 负责图像的收发

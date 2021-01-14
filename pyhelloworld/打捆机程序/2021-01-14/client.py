@@ -89,13 +89,23 @@ def ClientConnectSocket():
     clientsock = ClientLinkSet()
     cligps, clipic = InputInitialization()
 
-    """
+   """
+    SIGNAL = 0
+    clientsock.send(SIGNAL)
+
+    panduan = clientsock.recv()
+    if panduan == 1:
+        while   True····
+    elif panduan == 0:
+        clientsock.send("deivce"+SIGNAL+)
+        break
+    
     认证部分：
     输出：发送本地口令“device X”，至服务器查找对应名称
     接收：（成功）接收服务器“device existence”
           （失败）接收服务器“no device”
-    """
 
+"""
     while True:
         
         COUNT = NULL
